@@ -11,7 +11,7 @@ library(tidyverse)
 ```
 
 ```{r}
-data <- read.csv('/Users/sunyu/Desktop/IE 6600/final_project/Airplane_Crashes_and_Fatalities_Since_1908.csv',sep = ',',,stringsAsFactors = FALSE)
+data <- read.csv("/Users/fudanvip/project2_IE6600/final-project-VS/Airplane_Crashes_and_Fatalities_Since_1908.csv",sep =",",stringsAsFactors = FALSE)
 ```
 
 
@@ -128,7 +128,7 @@ temp_full %>%
   theme(legend.position = "none")
 
 
-month()
+#month()
 ```
 
 
