@@ -103,6 +103,7 @@ opStat %>%
 ```
 
 ```{r}
+# number of accidents each year
 library(lubridate)
 
 temp <- dataNoNA %>%
@@ -128,7 +129,32 @@ temp_full %>%
   theme(legend.position = "none")
 
 
-month()
+#month()
+```
+```{r}
+# number of fatalities each year
+temp2 <- dataNoNA %>%
+  filter(Operator == 'Aeroflot') %>%
+  mutate(Year = year(mdy(Date))) %>%
+  group_by(Year)%>%
+  summarise(Fatalities_num = sum(Fatalities))
+temp_full2 <- data.frame(Year = seq(1945,2010,1))
+temp_full2 <- merge(temp_full2, temp2, all.x=TRUE)
+temp_full2$Fatalities_num[is.na(temp_full2$Fatalities_num)] <- 0
+temp_full2 %>%
+  ggplot() +
+  geom_line(aes(Year,Fatalities_num , colour = 'Red')) + 
+  geom_point(aes(Year, Fatalities_num, colour = 'Red')) +
+  #geom_vline(xintercept = 1973, linetype = 'dashed')
+  geom_segment(aes(x = 1973, y = 830, xend = 1973, yend = -Inf), linetype = 2) +
+  scale_x_continuous(breaks=seq(1945, 2010,5)) +
+ # scale_y_continuous(breaks=seq(0, 15, 1)) +
+  theme_classic() +
+  theme(legend.position = "none")
+
+
+
+#month()
 ```
 
 
@@ -144,13 +170,23 @@ data_Aeroflot_loc <- dataNoNA%>%
   filter(Location != '')%>%
   filter(Summary != '')
  # filter(!is.na(Fatalities))
+data_alloperator <- dataNoNA%>%
+  filter(Location != '')%>%
+  filter(Summary != '')
+
+
+
+
 
 #Load the data as a corpus
 docs_loc <- Corpus(VectorSource(data_Aeroflot_loc$Location))
 docs_summary <- Corpus(VectorSource(data_Aeroflot_loc$Summary))
+doc_allloc <- Corpus(VectorSource(data_alloperator$Summary))
+
 #Inspect the content of the document
 inspect(docs_loc)
 inspect(docs_summary)
+inspect(doc_allsummary)
 #Text transformation
 #toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
 #docs <- tm_map(docs, toSpace, ",")
@@ -158,31 +194,44 @@ inspect(docs_summary)
 # Convert the text to lower case
 docs_loc <- tm_map(docs_loc, content_transformer(tolower))
 docs_summary <- tm_map(docs_summary, content_transformer(tolower))
+doc_allsummary <- tm_map(doc_allsummary,content_transformer(tolower))
 # Remove numbers
 docs_loc <- tm_map(docs_loc, removeNumbers)
 docs_summary <- tm_map(docs_summary, removeNumbers)
+doc_allsummary <- tm_map(doc_allsummary, removeNumbers)
 # Remove english common stopwords
 docs_loc <- tm_map(docs_loc, removeWords, stopwords("english"))
+docs_loc <- tm_map(docs_loc, removeWords, c("near"))
 docs_summary <- tm_map(docs_summary, removeWords, stopwords("english"))
+docs_summary <- tm_map(docs_summary, removeWords, c("aircraft","plane","flight"))
+doc_allsummary <- tm_map(doc_allsummary, removeWords, stopwords("english"))
+doc_allsummary<- tm_map(doc_allsummary, removeWords, c("aircraft","plane","flight"))
+
 # Remove punctuations
 docs_loc <- tm_map(docs_loc, removePunctuation)
 docs_summary <- tm_map(docs_summary, removePunctuation)
+doc_allsummary<- tm_map(doc_allsummary, removePunctuation)
 # Eliminate extra white spaces
 docs_loc <- tm_map(docs_loc, stripWhitespace)
 docs_summary <- tm_map(docs_summary, stripWhitespace)
-
+doc_allsummary <- tm_map(doc_allsummary, stripWhitespace)
 
 # build world cloud
 Location_fre <- TermDocumentMatrix(docs_loc)
 Summary_fre <-TermDocumentMatrix(docs_summary)
+allsummary_fre <- TermDocumentMatrix(doc_allsummary)
 m_loc<- as.matrix(Location_fre)
 m_summary<- as.matrix(Summary_fre)
+m_all <- as.matrix(allsummary_fre)
 v_loc <- sort(rowSums(m_loc),decreasing=TRUE)
 v_summary <- sort(rowSums(m_summary),decreasing=TRUE)
+v_all <- sort(rowSums(m_all),decreasing=TRUE)
 d_loc <- data.frame(word = names(v_loc),freq=v_loc)
 d_summary <- data.frame(word = names(v_summary),freq=v_summary)
+d_all <- data.frame(word = names(v_all),freq=v_all)
 head(d_loc, 10)
 head(d_summary, 10)
+head(d_all,10)
 # generate the word cloud
 set.seed(1234)
 wordcloud(words = d_loc$word, freq = d_loc$freq, min.freq = 1,
@@ -190,11 +239,65 @@ wordcloud(words = d_loc$word, freq = d_loc$freq, min.freq = 1,
           colors=brewer.pal(8, "Dark2"))
 
 wordcloud(words = d_summary$word, freq = d_summary$freq, min.freq = 1,
-          max.words=50, random.order=FALSE, rot.per=0.35, 
+          max.words=100, random.order=FALSE, rot.per=0.35, 
           colors=brewer.pal(8, "Dark2"))
 
+wordcloud(words = d_all$word, freq = d_all$freq, min.freq = 1,
+          max.words=100, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
 
 ```
 
+
+
+
+```{r}
+# aeroflot
+p <- ggplot(temp_full2, aes(x = Year))
+  p <- p + geom_line(data = temp_full2, aes(y = Fatalities_num , colour = 'Fatalities'))
+  p<- p + geom_vline(xintercept = 1973, linetype = 'dashed')
+  # adding the relative humidity data, transformed to match roughly the range of the temperature
+  #p <- p + geom_point(data = temp_full2,aes(y = Fatalities_num, colour = "black"))
+  p<- p + geom_line(data = temp_full,aes(y = numAcc*50, colour = 'Accidents'))
+  #p <- p + geom_point(data = temp_full, aes(y = numAcc*50, colour = 'black'))
+  # now adding the secondary axis, following the example in the help file ?scale_y_continuous
+  # and, very important, reverting the above transformation
+  p <- p + scale_y_continuous(name = "num_Fatalities", sec.axis =  sec_axis((~ . / 50), name = "num_ACC"))
+  p <- p + scale_x_continuous(breaks=seq(1945, 2010,5)) + theme_classic()
+  p <- p +  ggtitle("Aeroflot") + theme(plot.title = element_text(hjust = 0.5))
+  # modifying colours and theme options
+  p <- p + scale_colour_manual(values = c("blue", "red","black","green"))
+  #p<- p +theme(legend.position = "none")
+  #p <- p + labs(y = "Air temperature [°C]",
+               # x = "Date and time",
+               # colour = "Parameter")
+ # p <- p + theme(legend.position = c(0.8, 0.9))
+
+
+p
+
+
+
+```
+```{r}
+library(stringr)
+temp_loc <- dataNoNA %>%
+  filter(Operator == 'Aeroflot') %>%
+  mutate(Year = year(mdy(Date)))
+
+temp_loc$Location <- sub(".*, ", "", temp_loc$Location)
+temp_loc$Location<-str_replace_all(temp_loc$Location, fixed(" "), "")
+temp_loc<-select(temp_loc, Location, Year)
+temp_loc<- temp_loc[41:118,]
+#temp_loc<- filter(temp_loc,Year ==c("1970","1971","1972","1973","1974","1975","1976","1977","1978","1979"))
+fre <- temp_loc %>%
+  group_by(Location) %>%
+  summarise(location_frequent = n())
+
+#newdata <- mtcars[order(mpg, -cyl),] 
+#temp_loc<-filter(temp_loc, Location=="Russia"|Location=="USSR")
+ggplot(temp_loc, aes(x = Year, fill=Location))+geom_histogram(alpha = .5)+scale_x_continuous(breaks=seq(1970, 1979,1))
+
+```
 
 
