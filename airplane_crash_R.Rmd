@@ -1,0 +1,200 @@
+---
+title: "Final project"
+author: "YU SUN"
+date: "4/19/2019"
+output: pdf_document
+---
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+```
+
+```{r}
+data <- read.csv('/Users/sunyu/Desktop/IE 6600/final_project/Airplane_Crashes_and_Fatalities_Since_1908.csv',sep = ',',,stringsAsFactors = FALSE)
+```
+
+
+```{r}
+head(data)
+
+data %>%
+  drop_na() %>%
+  group_by(Operator)
+
+
+```
+```{r}
+
+any(data$Operator=='')
+dataNoNA <- data %>% 
+  filter(Operator != '') %>%
+  filter(!is.na(Fatalities))
+
+
+# as.data.frame(data)
+
+
+opStat <- dataNoNA %>%
+  group_by(Operator) %>%
+  summarise(totalFatalities = sum(Fatalities), numAccidents = n())
+
+
+# any(data$Operator=='')
+# aggregate(data$Fatalities, by=list(Operator=data$Operator), FUN=sum)
+
+# class(data)
+
+# Python 的第一张图
+opStat %>%
+  arrange( desc(totalFatalities)) %>%
+  head(10) %>%
+  ggplot(aes(x = reorder(Operator, -totalFatalities),totalFatalities, fill = Operator)) +
+  geom_bar(stat = "identity") + 
+  xlab("Operators") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  theme(legend.position = "none")
+
+# Python 的竖着第二张图
+opStat %>%
+  arrange( desc(totalFatalities)) %>%
+  head(10) %>%
+  ggplot(aes(x = reorder(Operator, -numAccidents),numAccidents, fill = Operator)) +
+  geom_bar(stat = "identity") + 
+  xlab("Operators") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  theme(legend.position = "none")
+
+# Python 的比例图
+ntf = sum(opStat$totalFatalities)
+opStat$totalFatalitiesProp <- opStat$totalFatalities/ntf
+
+nacc = sum(opStat$numAccidents)
+opStat$numAccidentsProp <- opStat$numAccidents/nacc
+
+# check the correctness of proportion
+# sum(opStat$totalFatalities/ntf)
+
+# totalFatalities 的比例图
+opStat %>%
+  arrange( desc(totalFatalitiesProp)) %>%
+  head(10) %>%
+  ggplot(aes(x = reorder(Operator, -totalFatalitiesProp), totalFatalitiesProp, fill = Operator)) +
+  geom_bar(stat = "identity") + 
+  xlab("Operators") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  theme(legend.position = "none")
+
+# numAccidents 比例图
+opStat %>%
+  arrange( desc(totalFatalities)) %>%
+  head(10) %>%
+  ggplot(aes(x = reorder(Operator, -numAccidentsProp), numAccidentsProp, fill = Operator)) +
+  geom_bar(stat = "identity") + 
+  xlab("Operators") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  theme(legend.position = "none")
+
+
+```
+
+```{r}
+library(lubridate)
+
+temp <- dataNoNA %>%
+  filter(Operator == 'Aeroflot') %>%
+  mutate(Year = year(mdy(Date))) %>%
+  group_by(Year) %>%
+  summarise(numAcc = n()) 
+
+
+temp_full <- data.frame(Year = seq(1945,2010,1))
+temp_full <- merge(temp_full, temp, all.x=TRUE)
+temp_full$numAcc[is.na(temp_full$numAcc)] <- 0
+
+temp_full %>%
+  ggplot() +
+  geom_line(aes(Year, numAcc, colour = 'Red')) + 
+  geom_point(aes(Year, numAcc, colour = 'Red')) +
+  #geom_vline(xintercept = 1973, linetype = 'dashed')
+  geom_segment(aes(x = 1973, y = 15, xend = 1973, yend = -Inf), linetype = 2) +
+  scale_x_continuous(breaks=seq(1945, 2010,5)) +
+  scale_y_continuous(breaks=seq(0, 15, 1)) +
+  theme_classic() +
+  theme(legend.position = "none")
+
+
+month()
+```
+
+
+```{r}
+# world cloud for Aeroflot
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+#pal = brewer.pal(9,"Blues")
+data_Aeroflot_loc <- dataNoNA%>%
+  filter(Operator == 'Aeroflot')%>%
+  filter(Location != '')%>%
+  filter(Summary != '')
+ # filter(!is.na(Fatalities))
+
+#Load the data as a corpus
+docs_loc <- Corpus(VectorSource(data_Aeroflot_loc$Location))
+docs_summary <- Corpus(VectorSource(data_Aeroflot_loc$Summary))
+#Inspect the content of the document
+inspect(docs_loc)
+inspect(docs_summary)
+#Text transformation
+#toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+#docs <- tm_map(docs, toSpace, ",")
+#Cleaning the text
+# Convert the text to lower case
+docs_loc <- tm_map(docs_loc, content_transformer(tolower))
+docs_summary <- tm_map(docs_summary, content_transformer(tolower))
+# Remove numbers
+docs_loc <- tm_map(docs_loc, removeNumbers)
+docs_summary <- tm_map(docs_summary, removeNumbers)
+# Remove english common stopwords
+docs_loc <- tm_map(docs_loc, removeWords, stopwords("english"))
+docs_summary <- tm_map(docs_summary, removeWords, stopwords("english"))
+# Remove punctuations
+docs_loc <- tm_map(docs_loc, removePunctuation)
+docs_summary <- tm_map(docs_summary, removePunctuation)
+# Eliminate extra white spaces
+docs_loc <- tm_map(docs_loc, stripWhitespace)
+docs_summary <- tm_map(docs_summary, stripWhitespace)
+
+
+# build world cloud
+Location_fre <- TermDocumentMatrix(docs_loc)
+Summary_fre <-TermDocumentMatrix(docs_summary)
+m_loc<- as.matrix(Location_fre)
+m_summary<- as.matrix(Summary_fre)
+v_loc <- sort(rowSums(m_loc),decreasing=TRUE)
+v_summary <- sort(rowSums(m_summary),decreasing=TRUE)
+d_loc <- data.frame(word = names(v_loc),freq=v_loc)
+d_summary <- data.frame(word = names(v_summary),freq=v_summary)
+head(d_loc, 10)
+head(d_summary, 10)
+# generate the word cloud
+set.seed(1234)
+wordcloud(words = d_loc$word, freq = d_loc$freq, min.freq = 1,
+          max.words=50, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+wordcloud(words = d_summary$word, freq = d_summary$freq, min.freq = 1,
+          max.words=50, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+
+```
+
+
+
