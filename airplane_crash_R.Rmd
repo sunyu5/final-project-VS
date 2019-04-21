@@ -29,6 +29,8 @@ data %>%
 any(data$Operator=='')
 dataNoNA <- data %>% 
   filter(Operator != '') %>%
+  filter(Fatalities != '')%>%
+  filter(Aboard != '')%>%
   filter(!is.na(Fatalities))
 
 
@@ -158,22 +160,53 @@ temp_full2 %>%
 ```
 
 ```{r} 
-# temp3 is normal Operator(commerical)
-temp3 <- dataNoNA %>%
-  filter(!grepl("Military", Operator, fixed = TRUE))
+# temp3 is normal Operator(commerical) year range: 1908 to 2008
+# number of accidents 
+temp_normal <- dataNoNA %>%
+  filter(!grepl("Military", Operator, fixed = TRUE))%>%
   #filter(Operator == 'Aeroflot') %>%
   mutate(Year = year(mdy(Date))) %>%
   group_by(Year)%>%
   summarise(numAcc_full = n())
 temp_full3 <- data.frame(Year = seq(1945,2010,1))
-temp_full3 <- merge(temp_full3, temp3, all.x=TRUE)
+temp_full3 <- merge(temp_full3, temp_normal, all.x=TRUE)
 temp_full3$numAcc_full[is.na(temp_full3$numAcc_full)] <- 0
 
+# number of fatalities
 
-normal<-filter(cleaned_trend, !grepl("Military", Operator, fixed = TRUE))
-normal_sum<-arrange(summarise(group_by(normal,Operator),total_happen = n()),desc(total_happen))[1:20,]
-top20normal<-subset(cleaned_trend,Operator %in% normal_sum$Operator)
+temp_fatalities <- dataNoNA %>%
+  filter(!grepl("Military", Operator, fixed = TRUE))%>%
+  #filter(Operator == 'Aeroflot') %>%
+  mutate(Year = year(mdy(Date))) %>%
+  group_by(Year)%>%
+  summarise(Fatalities_num = sum(Fatalities))
+temp_full4 <- data.frame(Year = seq(1945,2010,1))
+temp_full4 <- merge(temp_full4, temp_fatalities, all.x=TRUE)
+temp_full4$Fatalities_num[is.na(temp_full4$Fatalities_num)] <- 0
 
+# number of aboard 
+
+temp_fatalities_Aeroflot <- dataNoNA %>%
+  #filter(!grepl("Military", Operator, fixed = TRUE))%>%
+  filter(Operator == 'Aeroflot') %>%
+  mutate(Year = year(mdy(Date))) %>%
+  group_by(Year)%>%
+  summarise(Fatalities_num_Aeroflot = sum(Fatalities))
+temp_full5 <- data.frame(Year = seq(1945,2010,1))
+temp_full5 <- merge(temp_full5, temp_fatalities_Aeroflot, all.x=TRUE)
+temp_full5$Fatalities_num_Aeroflot[is.na(temp_full5$Fatalities_num_Aeroflot)] <- 0
+
+#number of survive
+
+temp_fatalities <- dataNoNA %>%
+  filter(!grepl("Military", Operator, fixed = TRUE))%>%
+  #filter(Operator == 'Aeroflot') %>%
+  mutate(Year = year(mdy(Date))) %>%
+  group_by(Year)%>%
+  summarise(Survive_num = sum(Aboard-Fatalities))
+temp_full6 <- data.frame(Year = seq(1945,2010,1))
+temp_full6 <- merge(temp_full6, temp_fatalities, all.x=TRUE)
+temp_full6$numAcc_full[is.na(temp_full6$Survive_num)] <- 0
 
 ```
 ```{r}
@@ -207,7 +240,7 @@ data_alloperator <- dataNoNA%>%
 #Load the data as a corpus
 docs_loc <- Corpus(VectorSource(data_Aeroflot_loc$Location))
 docs_summary <- Corpus(VectorSource(data_Aeroflot_loc$Summary))
-doc_allloc <- Corpus(VectorSource(data_alloperator$Summary))
+doc_allsummary <- Corpus(VectorSource(data_alloperator$Summary))
 
 #Inspect the content of the document
 inspect(docs_loc)
@@ -261,7 +294,7 @@ head(d_all,10)
 # generate the word cloud
 set.seed(1234)
 wordcloud(words = d_loc$word, freq = d_loc$freq, min.freq = 1,
-          max.words=50, random.order=FALSE, rot.per=0.35, 
+          max.words=100, random.order=FALSE, rot.per=0.35, 
           colors=brewer.pal(8, "Dark2"))
 
 wordcloud(words = d_summary$word, freq = d_summary$freq, min.freq = 1,
@@ -278,7 +311,7 @@ wordcloud(words = d_all$word, freq = d_all$freq, min.freq = 1,
 
 
 ```{r}
-# aeroflot
+# number of accidents all airplane and Aeroflot
 p <- ggplot(temp_full2, aes(x = Year))
   p <- p + geom_line(data = temp_full3, aes(y = numAcc_full , colour = 'ALL_Accidents'))
   p<- p + geom_vline(xintercept = 1973, linetype = 'dashed')
@@ -301,6 +334,27 @@ p <- ggplot(temp_full2, aes(x = Year))
 
 
 p
+
+
+#  fatalities all airplane and Aeroflot
+p_f <- ggplot(temp_full5, aes(x = Year))
+  p_f <- p_f + geom_line(data = temp_full4, aes(y = Fatalities_num , colour = 'ALL_Accidents'))
+  #p<- p + geom_vline(xintercept = 1973, linetype = 'dashed')
+  # adding the relative humidity data, transformed to match roughly the range of the temperature
+  #p <- p + geom_point(data = temp_full2,aes(y = Fatalities_num, colour = "black"))
+  p_f<- p_f + geom_line(data = temp_full5,aes(y = Fatalities_num_Aeroflot*3, colour = 'Accidents'))
+  #p <- p + geom_point(data = temp_full, aes(y = numAcc*50, colour = 'black'))
+  # now adding the secondary axis, following the example in the help file ?scale_y_continuous
+  # and, very important, reverting the above transformation
+  p_f <- p_f + scale_y_continuous(name = "num_Fatalities", sec.axis =  sec_axis((~ . / 3), name = "num_ACC"))
+  p_f <- p_f + scale_x_continuous(breaks=seq(1945, 2010,5)) + theme_classic()
+  p_f <- p_f +  ggtitle("Aeroflot") + theme(plot.title = element_text(hjust = 0.5))
+  # modifying colours and theme options
+  p_f <- p_f + scale_colour_manual(values = c("blue", "red","black","green"))
+
+
+p_f
+
 
 
 
