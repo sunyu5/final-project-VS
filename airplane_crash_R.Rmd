@@ -157,6 +157,32 @@ temp_full2 %>%
 #month()
 ```
 
+```{r} 
+# temp3 is normal Operator(commerical)
+temp3 <- dataNoNA %>%
+  filter(!grepl("Military", Operator, fixed = TRUE))
+  #filter(Operator == 'Aeroflot') %>%
+  mutate(Year = year(mdy(Date))) %>%
+  group_by(Year)%>%
+  summarise(numAcc_full = n())
+temp_full3 <- data.frame(Year = seq(1945,2010,1))
+temp_full3 <- merge(temp_full3, temp3, all.x=TRUE)
+temp_full3$numAcc_full[is.na(temp_full3$numAcc_full)] <- 0
+
+
+normal<-filter(cleaned_trend, !grepl("Military", Operator, fixed = TRUE))
+normal_sum<-arrange(summarise(group_by(normal,Operator),total_happen = n()),desc(total_happen))[1:20,]
+top20normal<-subset(cleaned_trend,Operator %in% normal_sum$Operator)
+
+
+```
+```{r}
+# since 1908 to 2009
+
+
+
+
+```
 
 ```{r}
 # world cloud for Aeroflot
@@ -254,15 +280,15 @@ wordcloud(words = d_all$word, freq = d_all$freq, min.freq = 1,
 ```{r}
 # aeroflot
 p <- ggplot(temp_full2, aes(x = Year))
-  p <- p + geom_line(data = temp_full2, aes(y = Fatalities_num , colour = 'Fatalities'))
+  p <- p + geom_line(data = temp_full3, aes(y = numAcc_full , colour = 'ALL_Accidents'))
   p<- p + geom_vline(xintercept = 1973, linetype = 'dashed')
   # adding the relative humidity data, transformed to match roughly the range of the temperature
   #p <- p + geom_point(data = temp_full2,aes(y = Fatalities_num, colour = "black"))
-  p<- p + geom_line(data = temp_full,aes(y = numAcc*50, colour = 'Accidents'))
+  p<- p + geom_line(data = temp_full,aes(y = numAcc*6, colour = 'Accidents'))
   #p <- p + geom_point(data = temp_full, aes(y = numAcc*50, colour = 'black'))
   # now adding the secondary axis, following the example in the help file ?scale_y_continuous
   # and, very important, reverting the above transformation
-  p <- p + scale_y_continuous(name = "num_Fatalities", sec.axis =  sec_axis((~ . / 50), name = "num_ACC"))
+  p <- p + scale_y_continuous(name = "num_Fatalities", sec.axis =  sec_axis((~ . / 6), name = "num_ACC"))
   p <- p + scale_x_continuous(breaks=seq(1945, 2010,5)) + theme_classic()
   p <- p +  ggtitle("Aeroflot") + theme(plot.title = element_text(hjust = 0.5))
   # modifying colours and theme options
@@ -293,11 +319,30 @@ temp_loc<- temp_loc[41:118,]
 fre <- temp_loc %>%
   group_by(Location) %>%
   summarise(location_frequent = n())
+n = sum(fre$location_frequent)
+n_R = 40
+n_USSR = 22
+
+library(ggmap) # for theme_nothing
+df_1970s <- data.frame(value = c(16, 40, 22),
+                 Group = c("OTHER location", "Russia", "USSR")) %>%
+   # factor levels need to be the opposite order of the cumulative sum of the values
+   mutate(Group = factor(Group, levels = c("USSR", "Russia", "OTHER location")),
+          cumulative = cumsum(value),
+          midpoint = cumulative - value / 2,
+          label = paste0(Group, " ", round(value / sum(value) * 100, 1), "%"))
+
+ggplot(df_1970s, aes(x = 1, weight = value, fill = Group)) +
+   geom_bar(width = 1, position = "stack") +
+   coord_polar(theta = "y") +
+   geom_text(aes(x = 1.3, y = midpoint, label = label)) +
+   theme_nothing()      
 
 #newdata <- mtcars[order(mpg, -cyl),] 
-#temp_loc<-filter(temp_loc, Location=="Russia"|Location=="USSR")
-ggplot(temp_loc, aes(x = Year, fill=Location))+geom_histogram(alpha = .5)+scale_x_continuous(breaks=seq(1970, 1979,1))
+#temp_loc<-filter(temp_loc, Location == 'Russia'|Location == 'USSR')
+ggplot(temp_loc, aes(x = Year, fill=Location))+geom_histogram()+scale_x_continuous(breaks=seq(1970, 1979,1))+theme_classic()
 
 ```
+
 
 
