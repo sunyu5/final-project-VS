@@ -56,7 +56,8 @@ opStat %>%
   xlab("Operators") +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 90)) +
-  theme(legend.position = "none")
+  theme(legend.position = "none")+
+  ggtitle("Fatalities by Operator") + theme(plot.title = element_text(hjust = 0.5))
 
 # Python 的竖着第二张图
 opStat %>%
@@ -67,7 +68,8 @@ opStat %>%
   xlab("Operators") +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 90)) +
-  theme(legend.position = "none")
+  theme(legend.position = "none")+
+  ggtitle("Accidents by Operator") + theme(plot.title = element_text(hjust = 0.5))
 
 # Python 的比例图
 ntf = sum(opStat$totalFatalities)
@@ -88,7 +90,8 @@ opStat %>%
   xlab("Operators") +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 90)) +
-  theme(legend.position = "none")
+  theme(legend.position = "none")+
+  ggtitle("Proportion of total Fatalities") + theme(plot.title = element_text(hjust = 0.5))
 
 # numAccidents 比例图
 opStat %>%
@@ -99,8 +102,80 @@ opStat %>%
   xlab("Operators") +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 90)) +
-  theme(legend.position = "none")
+  theme(legend.position = "none")+
+   ggtitle("Proportion of total Accidents") + theme(plot.title = element_text(hjust = 0.5))
 
+
+```
+```{r}
+#机型 
+tyStat <- dataNoNA %>%
+  group_by(Type) %>%
+  summarise(totalFatalities = sum(Fatalities), numAccidents = n())
+
+
+# any(data$Operator=='')
+# aggregate(data$Fatalities, by=list(Operator=data$Operator), FUN=sum)
+
+# class(data)
+
+# Python 的第一张图
+tyStat %>%
+  arrange( desc(totalFatalities)) %>%
+  head(10) %>%
+  ggplot(aes(x = reorder(Type, -totalFatalities),totalFatalities, fill = Type)) +
+  geom_bar(stat = "identity") + 
+  xlab("Type") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  theme(legend.position = "none")+
+  ggtitle("Fatalities by Type") + theme(plot.title = element_text(hjust = 0.5))
+
+# Python 的竖着第二张图
+tyStat %>%
+  arrange( desc(totalFatalities)) %>%
+  head(10) %>%
+  ggplot(aes(x = reorder(Type, -numAccidents),numAccidents, fill = Type)) +
+  geom_bar(stat = "identity") + 
+  xlab("Types") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  theme(legend.position = "none")+
+  ggtitle("Accidents by Type") + theme(plot.title = element_text(hjust = 0.5))
+
+# Python 的比例图
+ntf = sum(tyStat$totalFatalities)
+tyStat$totalFatalitiesProp <- tyStat$totalFatalities/ntf
+
+nacc = sum(tyStat$numAccidents)
+tyStat$numAccidentsProp <- tyStat$numAccidents/nacc
+
+# check the correctness of proportion
+# sum(opStat$totalFatalities/ntf)
+
+# totalFatalities 的比例图
+tyStat %>%
+  arrange( desc(totalFatalitiesProp)) %>%
+  head(10) %>%
+  ggplot(aes(x = reorder(Type, -totalFatalitiesProp), totalFatalitiesProp, fill = Type)) +
+  geom_bar(stat = "identity") + 
+  xlab("Types") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  theme(legend.position = "none")+
+  ggtitle("proportion of total accidents") + theme(plot.title = element_text(hjust = 0.5))
+
+# numAccidents 比例图
+tyStat %>%
+  arrange( desc(totalFatalities)) %>%
+  head(10) %>%
+  ggplot(aes(x = reorder(Type, -numAccidentsProp), numAccidentsProp, fill = Type)) +
+  geom_bar(stat = "identity") + 
+  xlab("Types") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  theme(legend.position = "none")+
+  ggtitle("proportion of total Fatalities") + theme(plot.title = element_text(hjust = 0.5))
 
 ```
 
@@ -338,17 +413,17 @@ p
 
 #  fatalities all airplane and Aeroflot
 p_f <- ggplot(temp_full5, aes(x = Year))
-  p_f <- p_f + geom_line(data = temp_full4, aes(y = Fatalities_num , colour = 'ALL_Accidents'))
+  p_f <- p_f + geom_line(data = temp_full4, aes(y = Fatalities_num , colour = 'Normal_Fatalities'))
   #p<- p + geom_vline(xintercept = 1973, linetype = 'dashed')
   # adding the relative humidity data, transformed to match roughly the range of the temperature
   #p <- p + geom_point(data = temp_full2,aes(y = Fatalities_num, colour = "black"))
-  p_f<- p_f + geom_line(data = temp_full5,aes(y = Fatalities_num_Aeroflot*3, colour = 'Accidents'))
+  p_f<- p_f + geom_line(data = temp_full5,aes(y = Fatalities_num_Aeroflot*3, colour = 'Aeroflot_Fatalities'))
   #p <- p + geom_point(data = temp_full, aes(y = numAcc*50, colour = 'black'))
   # now adding the secondary axis, following the example in the help file ?scale_y_continuous
   # and, very important, reverting the above transformation
-  p_f <- p_f + scale_y_continuous(name = "num_Fatalities", sec.axis =  sec_axis((~ . / 3), name = "num_ACC"))
+  p_f <- p_f + scale_y_continuous(name = "num_ALL_Fatalities", sec.axis =  sec_axis((~ . / 3), name = "num_Aeroflot_Fatalities"))
   p_f <- p_f + scale_x_continuous(breaks=seq(1945, 2010,5)) + theme_classic()
-  p_f <- p_f +  ggtitle("Aeroflot") + theme(plot.title = element_text(hjust = 0.5))
+  p_f <- p_f +  ggtitle("Fatalities VS Aeroflot") + theme(plot.title = element_text(hjust = 0.5))
   # modifying colours and theme options
   p_f <- p_f + scale_colour_manual(values = c("blue", "red","black","green"))
 
