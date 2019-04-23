@@ -25,7 +25,7 @@ data %>%
 
 ```
 ```{r}
-
+library(gridExtra)
 any(data$Operator=='')
 dataNoNA <- data %>% 
   filter(Operator != '') %>%
@@ -47,7 +47,7 @@ opStat <- dataNoNA %>%
 
 # class(data)
 
-# Python 的第一张图
+# 
 opStat %>%
   arrange( desc(totalFatalities)) %>%
   head(10) %>%
@@ -59,7 +59,7 @@ opStat %>%
   theme(legend.position = "none")+
   ggtitle("Fatalities by Operator") + theme(plot.title = element_text(hjust = 0.5))
 
-# Python 的竖着第二张图
+# 
 opStat %>%
   arrange( desc(totalFatalities)) %>%
   head(10) %>%
@@ -71,7 +71,7 @@ opStat %>%
   theme(legend.position = "none")+
   ggtitle("Accidents by Operator") + theme(plot.title = element_text(hjust = 0.5))
 
-# Python 的比例图
+# 
 ntf = sum(opStat$totalFatalities)
 opStat$totalFatalitiesProp <- opStat$totalFatalities/ntf
 
@@ -108,7 +108,7 @@ opStat %>%
 
 ```
 ```{r}
-#机型 
+# airplane type 
 tyStat <- dataNoNA %>%
   group_by(Type) %>%
   summarise(totalFatalities = sum(Fatalities), numAccidents = n())
@@ -119,7 +119,7 @@ tyStat <- dataNoNA %>%
 
 # class(data)
 
-# Python 的第一张图
+# 
 tyStat %>%
   arrange( desc(totalFatalities)) %>%
   head(10) %>%
@@ -194,16 +194,7 @@ temp_full <- data.frame(Year = seq(1945,2010,1))
 temp_full <- merge(temp_full, temp, all.x=TRUE)
 temp_full$numAcc[is.na(temp_full$numAcc)] <- 0
 
-temp_full %>%
-  ggplot() +
-  geom_line(aes(Year, numAcc, colour = 'Red')) + 
-  geom_point(aes(Year, numAcc, colour = 'Red')) +
-  #geom_vline(xintercept = 1973, linetype = 'dashed')
-  geom_segment(aes(x = 1973, y = 15, xend = 1973, yend = -Inf), linetype = 2) +
-  scale_x_continuous(breaks=seq(1945, 2010,5)) +
-  scale_y_continuous(breaks=seq(0, 15, 1)) +
-  theme_classic() +
-  theme(legend.position = "none")
+
 
 
 #month()
@@ -218,16 +209,6 @@ temp2 <- dataNoNA %>%
 temp_full2 <- data.frame(Year = seq(1945,2010,1))
 temp_full2 <- merge(temp_full2, temp2, all.x=TRUE)
 temp_full2$Fatalities_num[is.na(temp_full2$Fatalities_num)] <- 0
-temp_full2 %>%
-  ggplot() +
-  geom_line(aes(Year,Fatalities_num , colour = 'Red')) + 
-  geom_point(aes(Year, Fatalities_num, colour = 'Red')) +
-  #geom_vline(xintercept = 1973, linetype = 'dashed')
-  geom_segment(aes(x = 1973, y = 830, xend = 1973, yend = -Inf), linetype = 2) +
-  scale_x_continuous(breaks=seq(1945, 2010,5)) +
- # scale_y_continuous(breaks=seq(0, 15, 1)) +
-  theme_classic() +
-  theme(legend.position = "none")
 
 
 
@@ -235,7 +216,29 @@ temp_full2 %>%
 ```
 
 ```{r} 
-# temp3 is normal Operator(commerical) year range: 1908 to 2008
+# normal Operator(commerical) year 
+temp <- dataNoNA %>%
+  filter(Operator == 'Aeroflot') %>%
+  mutate(Year = year(mdy(Date))) %>%
+  group_by(Year) %>%
+  summarise(numAcc = n()) 
+
+
+temp_full <- data.frame(Year = seq(1945,2010,1))
+temp_full <- merge(temp_full, temp, all.x=TRUE)
+temp_full$numAcc[is.na(temp_full$numAcc)] <- 0
+
+
+temp2 <- dataNoNA %>%
+  filter(Operator == 'Aeroflot') %>%
+  mutate(Year = year(mdy(Date))) %>%
+  group_by(Year)%>%
+  summarise(Fatalities_num = sum(Fatalities))
+temp_full2 <- data.frame(Year = seq(1945,2010,1))
+temp_full2 <- merge(temp_full2, temp2, all.x=TRUE)
+temp_full2$Fatalities_num[is.na(temp_full2$Fatalities_num)] <- 0
+
+
 # number of accidents 
 temp_normal <- dataNoNA %>%
   filter(!grepl("Military", Operator, fixed = TRUE))%>%
@@ -314,7 +317,7 @@ data_alloperator <- dataNoNA%>%
 
 #Load the data as a corpus
 docs_loc <- Corpus(VectorSource(data_Aeroflot_loc$Location))
-docs_summary <- Corpus(VectorSource(data_Aeroflot_loc$Summary))
+docs_summary <- Corpus(VectorSource(data_alloperator$Location))
 doc_allsummary <- Corpus(VectorSource(data_alloperator$Summary))
 
 #Inspect the content of the document
@@ -337,7 +340,7 @@ doc_allsummary <- tm_map(doc_allsummary, removeNumbers)
 docs_loc <- tm_map(docs_loc, removeWords, stopwords("english"))
 docs_loc <- tm_map(docs_loc, removeWords, c("near"))
 docs_summary <- tm_map(docs_summary, removeWords, stopwords("english"))
-docs_summary <- tm_map(docs_summary, removeWords, c("aircraft","plane","flight"))
+docs_summary <- tm_map(docs_summary, removeWords, c("near","new","flight"))
 doc_allsummary <- tm_map(doc_allsummary, removeWords, stopwords("english"))
 doc_allsummary<- tm_map(doc_allsummary, removeWords, c("aircraft","plane","flight"))
 
@@ -388,17 +391,17 @@ wordcloud(words = d_all$word, freq = d_all$freq, min.freq = 1,
 ```{r}
 # number of accidents all airplane and Aeroflot
 p <- ggplot(temp_full2, aes(x = Year))
-  p <- p + geom_line(data = temp_full3, aes(y = numAcc_full , colour = 'ALL_Accidents'))
+  p <- p + geom_line(data = temp_full3, aes(y = numAcc_full , colour = 'Normal_Accidents'))
   p<- p + geom_vline(xintercept = 1973, linetype = 'dashed')
   # adding the relative humidity data, transformed to match roughly the range of the temperature
   #p <- p + geom_point(data = temp_full2,aes(y = Fatalities_num, colour = "black"))
-  p<- p + geom_line(data = temp_full,aes(y = numAcc*6, colour = 'Accidents'))
+  p<- p + geom_line(data = temp_full,aes(y = numAcc*6, colour = 'Aeroflot_Accidents'))
   #p <- p + geom_point(data = temp_full, aes(y = numAcc*50, colour = 'black'))
   # now adding the secondary axis, following the example in the help file ?scale_y_continuous
   # and, very important, reverting the above transformation
   p <- p + scale_y_continuous(name = "num_Fatalities", sec.axis =  sec_axis((~ . / 6), name = "num_ACC"))
   p <- p + scale_x_continuous(breaks=seq(1945, 2010,5)) + theme_classic()
-  p <- p +  ggtitle("Aeroflot") + theme(plot.title = element_text(hjust = 0.5))
+  p <- p +  ggtitle("Accidents by Aeroflot VS Normal Operator") + theme(plot.title = element_text(hjust = 0.5))
   # modifying colours and theme options
   p <- p + scale_colour_manual(values = c("blue", "red","black","green"))
   #p<- p +theme(legend.position = "none")
@@ -423,7 +426,7 @@ p_f <- ggplot(temp_full5, aes(x = Year))
   # and, very important, reverting the above transformation
   p_f <- p_f + scale_y_continuous(name = "num_ALL_Fatalities", sec.axis =  sec_axis((~ . / 3), name = "num_Aeroflot_Fatalities"))
   p_f <- p_f + scale_x_continuous(breaks=seq(1945, 2010,5)) + theme_classic()
-  p_f <- p_f +  ggtitle("Fatalities VS Aeroflot") + theme(plot.title = element_text(hjust = 0.5))
+  p_f <- p_f +  ggtitle("Fatalities by Aeroflot VS Normal Operator") + theme(plot.title = element_text(hjust = 0.5))
   # modifying colours and theme options
   p_f <- p_f + scale_colour_manual(values = c("blue", "red","black","green"))
 
@@ -463,13 +466,28 @@ df_1970s <- data.frame(value = c(16, 40, 22),
 
 ggplot(df_1970s, aes(x = 1, weight = value, fill = Group)) +
    geom_bar(width = 1, position = "stack") +
-   coord_polar(theta = "y") +
+   coord_polar(theta = "y") + scale_fill_manual(values = c("OTHER location" = "Yellow",
+                                  "Russia" = "orchid1",
+                                  "USSR" = "olivedrab1")) +
    geom_text(aes(x = 1.3, y = midpoint, label = label)) +
-   theme_nothing()      
+   ggtitle("Location of Aeroflot Crashed in 1970s") +
+   theme_nothing()#+ggtitle("Ratio of Aeroflot Location in 1970s") + theme(plot.title = element_text(hjust = 1)) 
 
+  
+  
+  
+  
+library(RColorBrewer)  
+colourCount = length(unique(temp_loc$Location))
+getPalette = colorRampPalette(brewer.pal(16, "Set1"))
+ 
+#ggplot(mtcars) + 
+ # geom_histogram(aes(factor(Location)), fill=getPalette(colourCount)) + 
+ # theme(legend.position="right")
 #newdata <- mtcars[order(mpg, -cyl),] 
 #temp_loc<-filter(temp_loc, Location == 'Russia'|Location == 'USSR')
-ggplot(temp_loc, aes(x = Year, fill=Location))+geom_histogram()+scale_x_continuous(breaks=seq(1970, 1979,1))+theme_classic()
+ggplot(temp_loc, aes(x = Year, fill=Location))+geom_histogram()+scale_x_continuous(breaks=seq(1970, 1979,1))+theme_classic()+scale_fill_manual(values = colorRampPalette(brewer.pal(16, "Set3"))(colourCount))+
+  ggtitle("Location of Aeroflot Crashed in 1970s") + theme(plot.title = element_text(hjust = 0.5))
 
 ```
 
